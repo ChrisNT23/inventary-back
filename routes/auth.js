@@ -77,38 +77,31 @@ router.post('/register', async (req, res) => {
 // Login de usuario (existente)
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  console.log('Intento de login para:', email); // Log 1
   
   try {
-    const user = await User.findOne({ email });
-    console.log('Usuario encontrado:', user ? user.email : 'NO'); // Log 2
+    const user = await User.findOne({ email }).select('+password'); // Asegura que incluya el campo password
+    if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-    if (!user) {
-      console.log('Usuario no existe'); // Log 3
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    console.log('Comparando contraseña...'); // Log 4
     const validPassword = await bcrypt.compare(password, user.password);
-    console.log('Resultado comparación:', validPassword); // Log 5
-
-    if (!validPassword) {
-      console.log('Contraseña incorrecta'); // Log 6
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    // Verifica que JWT_SECRET esté definido
-    if (!process.env.JWT_SECRET) {
-      console.error('Falta JWT_SECRET en .env');
-      return res.status(500).json({ error: 'Error de configuración' });
-    }
+    if (!validPassword) return res.status(401).json({ error: 'Credenciales inválidas' });
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token, user: { id: user._id, email: user.email } });
 
+    // Respuesta completa con todos los datos necesarios
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        email: user.email,
+        pais: user.pais,
+        fechaNacimiento: user.fechaNacimiento // Opcional si lo necesitas
+      }
+    });
   } catch (err) {
-    console.error('Error completo en login:', err);
-    res.status(500).json({ error: 'Error interno', details: err.message });
+    console.error('Error en login:', err);
+    res.status(500).json({ error: 'Error interno' });
   }
 });
 

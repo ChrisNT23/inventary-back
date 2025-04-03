@@ -3,46 +3,51 @@ import Inventory from '../models/inventory';
 export const searchInventory = async (req, res) => {
   try {
     const { 
-      page = 1, 
-      limit = 10, 
-      sortBy = 'fechaCreacion', 
-      sortOrder = 'desc',
+      skip = 0, 
+      limit = 20,
       ...filters 
     } = req.query;
 
-    // Procesar filtros de regex
-    const processedFilters = {};
-    for (const [key, value] of Object.entries(filters)) {
+    // Procesar filtros
+    const query = {};
+    
+    for (const key in filters) {
+      if (filters[key] === '' || filters[key] === undefined) continue;
+      
+      // Manejar campos con regex
       if (key.endsWith('[regex]')) {
         const fieldName = key.replace('[regex]', '');
         const options = filters[`${fieldName}[options]`] || 'i';
-        processedFilters[fieldName] = { $regex: value, $options: options };
-      } else if (!key.includes('[options]')) {
-        processedFilters[key] = value;
+        query[fieldName] = { $regex: filters[key], $options: options };
+      } 
+      // Manejar campos booleanos
+      else if (key === 'facturado') {
+        query[key] = filters[key] === 'true';
+      }
+      // Manejar otros campos
+      else if (!key.includes('[options]')) {
+        query[key] = filters[key];
       }
     }
 
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-    
-    const items = await Inventory.find(processedFilters)
-      .sort(sort)
-      .skip((page - 1) * limit)
-      .limit(limit);
+    // Ejecutar consulta
+    const items = await Inventory.find(query)
+      .skip(Number(skip))
+      .limit(Number(limit));
 
-    const totalItems = await Inventory.countDocuments(processedFilters);
+    const totalItems = await Inventory.countDocuments(query);
 
     res.json({
       success: true,
       items,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(totalItems / limit),
-      totalItems
+      totalItems,
+      hasMore: skip + items.length < totalItems
     });
   } catch (error) {
+    console.error('Error en búsqueda:', error);
     res.status(500).json({ 
       success: false, 
-      error: error.message,
-      message: 'Error al buscar en el inventario'
+      error: error.message 
     });
   }
 };

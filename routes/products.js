@@ -1,5 +1,5 @@
 import express from 'express';
-import Inventory from '../models/Inventory.js';
+import Inventory from '../models/inventory.js';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
