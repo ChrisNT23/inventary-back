@@ -41,30 +41,43 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 // Obtener todos los items (con filtros)
+// Modifica tu ruta GET '/' de esta forma
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { tipo, status, cliente, facturado, page = 1, limit = 20 } = req.query;
-    const query = {};
+    const { skip = 0, limit = 50, ...filters } = req.query;
     
-    if (tipo) query.tipo = tipo;
-    if (status) query.status = status;
-    if (cliente) query.cliente = new RegExp(cliente, 'i');
-    if (facturado) query.facturado = facturado === 'true';
+    // Construir query dinámico con filtros regex
+    const query = {};
+    Object.entries(filters).forEach(([key, value]) => {
+      if (key.endsWith('[regex]')) {
+        const cleanKey = key.replace('[regex]', '');
+        const options = filters[`${cleanKey}[options]`] || 'i';
+        query[cleanKey] = new RegExp(value, options);
+      } else if (key === 'facturado') {
+        query[key] = value === 'true';
+      } else if (value !== '') {
+        query[key] = value;
+      }
+    });
 
-    const items = await Inventory.find(query)
-      .populate('creadoPor', 'nombre email')
-      .sort({ fechaCreacion: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    // Consulta con paginación para scroll infinito
+    const [items, total] = await Promise.all([
+      Inventory.find(query)
+        .skip(Number(skip))
+        .limit(Number(limit))
+        .lean(),
+      Inventory.countDocuments(query)
+    ]);
 
-    const count = await Inventory.countDocuments(query);
+    // Calcular si hay más registros
+    const hasMore = total > Number(skip) + Number(limit);
 
     res.status(200).json({
       items,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      totalItems: count
+      hasMore,
+      total
     });
+
   } catch (err) {
     console.error('Error al obtener items:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
