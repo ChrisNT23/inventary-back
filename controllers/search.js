@@ -9,26 +9,26 @@ export const searchInventory = async (req, res) => {
     } = req.query;
 
     // Procesar filtros
-    const query = {};
-    
-    for (const key in filters) {
-      if (filters[key] === '' || filters[key] === undefined) continue;
-      
-      // Manejar campos con regex
-      if (key.endsWith('[regex]')) {
-        const fieldName = key.replace('[regex]', '');
-        const options = filters[`${fieldName}[options]`] || 'i';
-        query[fieldName] = { $regex: filters[key], $options: options };
-      } 
-      // Manejar campos booleanos
-      else if (key === 'facturado') {
-        query[key] = filters[key] === 'true';
-      }
-      // Manejar otros campos
-      else if (!key.includes('[options]')) {
-        query[key] = filters[key];
-      }
-    }
+let searchQuery = {};
+
+for (const key in queryParams) {
+  if (key === 'facturado') {
+    searchQuery[key] = queryParams[key] === 'true';
+  } else if (!key.endsWith('[regex]')) {
+    searchQuery[key] = queryParams[key];
+  }
+}
+
+// Filtrar por regex
+for (const key in queryParams) {
+  if (key.endsWith('[regex]')) {
+    const fieldName = key.replace('[regex]', '');
+    const options = queryParams[`${fieldName}[options]`] || 'i';
+    searchQuery[fieldName] = { $regex: queryParams[key], $options: options };
+  }
+}
+
+
 
     // Ejecutar consulta
     const items = await Inventory.find(query)
