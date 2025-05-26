@@ -91,7 +91,6 @@ InventorySchema.pre('findOneAndUpdate', function(next) {
   next();
 });
 
-// Método estático para búsqueda con filtros
 InventorySchema.statics.search = async function(filters = {}, options = {}) {
   const {
     page = 1,
@@ -100,6 +99,8 @@ InventorySchema.statics.search = async function(filters = {}, options = {}) {
     populate = 'creadoPor'
   } = options;
 
+  console.log('Filtros recibidos:', filters); // Agregar log para depuración
+
   // Construir query de búsqueda
   const query = {};
   
@@ -107,7 +108,7 @@ InventorySchema.statics.search = async function(filters = {}, options = {}) {
   const textFilters = ['nParte', 'descripcion', 'serial', 'cliente', 'oc', 'numeroFactura'];
   textFilters.forEach(field => {
     if (filters[field]) {
-      query[field] = { $regex: filters[field], $options: 'i' };
+      query[field] = { $regex: filters[field], $options: 'i' }; // Buscar subcadena en cualquier parte del texto
     }
   });
 
@@ -125,6 +126,8 @@ InventorySchema.statics.search = async function(filters = {}, options = {}) {
     if (filters.fechaHasta) query.fechaCreacion.$lte = new Date(filters.fechaHasta);
   }
 
+  console.log('Consulta de búsqueda:', query); // Agregar log para depuración
+
   // Ejecutar consulta con paginación
   const results = await this.find(query)
     .sort(sort)
@@ -134,8 +137,12 @@ InventorySchema.statics.search = async function(filters = {}, options = {}) {
     .lean()
     .exec();
 
+  console.log('Resultados de la consulta:', results); // Agregar log para depuración
+
   // Contar total de documentos para paginación
   const total = await this.countDocuments(query);
+
+  console.log('Total de documentos:', total); // Agregar log para depuración
 
   return {
     results,
