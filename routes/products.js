@@ -128,10 +128,6 @@ router.get('/', authenticate, async (req, res) => {
   }
 }); 
 
-
-
-
-
 // Obtener un item por ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
@@ -151,6 +147,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Actualizar item
 router.put('/:id', authenticate, async (req, res) => {
   try {
+    console.log('Datos recibidos para actualizar:', req.body);
     // 1. Validar que el status esté presente y sea válido
     if (req.body.status && !['Por entregar', 'En progreso', 'Enviado', 'Entregado'].includes(req.body.status)) {
       return res.status(400).json({
